@@ -6,6 +6,7 @@
     <label for="password">Пароль</label>
     <input type="password" />
     <button type="submit">Войти</button>
+    <RouterLink to="/login">Создать аккаунт</RouterLink>
   </form>
 </template>
 <script lang="ts" setup>
