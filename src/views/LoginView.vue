@@ -1,13 +1,17 @@
 <template>
-    <form @submit.prevent="onSubmit">
-        <h1>Вход</h1>
-        <label for="username">Имя пользователя</label>
-        <input name="username" v-model="name" type="text" />
-        <label for="password">Пароль</label>
-        <input type="password" v-model="pass" />
-        <button type="submit">Войти</button>
-        <RouterLink to="/login">Создать аккаунт</RouterLink>
-    </form>
+    <main>
+        <form @submit.prevent="onSubmit">
+            <div class="bottom">
+                <h1>Вход</h1>
+                <input name="username" placeholder="Имя пользователя" v-model="name" type="text" />
+                <input type="password" placeholder="Пароль" v-model="pass" />
+            </div>
+            <div class="bottom">
+                <button type="submit">Войти</button>
+                <RouterLink to="/login">Нету аккаунта? Создать аккаунт</RouterLink>
+            </div>
+        </form>
+    </main>
 </template>
 <script lang="ts" setup>
 import axios, { AxiosError } from 'axios'
@@ -51,14 +55,28 @@ const onSubmit = async () => {
 }
 </script>
 <style scoped>
+main {
+    background-color: #f3f4f6;
+    display: flex;
+    min-height: 100vh;
+    width: 100%;
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+}
+
 form {
+    margin: auto;
+    background-color: white;
+    border-radius: 1rem;
+    padding: 0.5rem 2rem;
     display: flex;
     flex-direction: column;
-    align-items: center;
-    justify-content: start;
-    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-    font-size: 1.5rem;
+    align-items: stretch;
+    justify-content: space-between;
+    min-width: 25%;
+}
 
+h1 {
+    margin: 0;
 }
 
 label {
@@ -66,18 +84,41 @@ label {
 }
 
 button {
-    margin-top: 0.5rem;
-    font-size: 1.7rem;
-    font-weight: semibold;
-    padding: 0.25rem 0.5rem;
+    margin-top: 3rem;
+    font-size: 1rem;
+    font-weight: 600;
+    padding: 0.75rem 1rem;
     outline: none;
-    border: 1px solid black;
-    border-radius: 0.25rem;
-    background-color: white;
+    border: none;
+    border-radius: 10px;
+    background-color: #3b82f6;
     cursor: pointer;
+    color: white;
+    transition: all 0.2s;
+}
+
+button:hover {
+    transform: scale(1.03);
 }
 
 a {
-    text-decoration: none !important;
+    font-size: 14px;
+    margin-top: 0.5rem;
+}
+
+.bottom {
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+    justify-content: start;
+}
+
+input {
+    outline: none;
+    padding: 0.75rem 1rem;
+    border: 1px solid #d1d5db;
+    background-color: #f9fafb;
+    border-radius: 10px;
+    margin-top: 1rem;
 }
 </style>
