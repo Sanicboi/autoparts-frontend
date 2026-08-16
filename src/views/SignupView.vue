@@ -14,7 +14,8 @@
         <!-- <lable for="key">key</lable> -->
         <input type="text" if="key" v-model="form.key" placeholder="key" />
       </div>
-      <button type="submit">Log in</button>
+      <button type="submit">Зарегистрироваться</button>
+      <RouterLink to="/login">Уже есть аккаунт? Войти</RouterLink>
     </form>
   </main>
 </template>
@@ -28,6 +29,7 @@ main {
   background-color: #f3f4f6;
   margin: -8px;
 }
+
 main > div {
   position: relative;
   width: 100%;
@@ -36,6 +38,7 @@ main > div {
   flex-direction: column;
   align-items: center;
 }
+
 form {
   background: rgba(255, 255, 255, 0.85);
   backdrop-filter: blur(10px);
@@ -49,6 +52,7 @@ form {
   flex-direction: column;
   gap: 16px;
 }
+
 h2 {
   margin: 0 0 10px 0;
   text-align: left;
@@ -56,6 +60,7 @@ h2 {
   font-size: 32px;
   font-weight: 700;
 }
+
 input {
   width: 100%;
   padding: 14px 16px;
@@ -67,12 +72,14 @@ input {
   color: #333;
   transition: border-color 0.2s ease;
 }
+
 input:focus {
   outline: none;
   border-color: #3b82f6;
   box-shadow: 0 0 0 apx rgba(59, 130, 246, 0.15);
   background-color: white;
 }
+
 button {
   padding: 14px 16px;
   background-color: #3b82f6;
@@ -87,9 +94,11 @@ button {
     background-color 0.2s,
     transform 0.1s;
 }
+
 button:hover {
   background-color: #2563eb;
 }
+
 button:active {
   transform: scale(0.97);
 }
@@ -102,7 +111,35 @@ const form = reactive({
   password: '',
   key: '',
 })
-const onSubmit = () => {
-  console.log('Submitted form data', form)
+const onSubmit = async () => {
+  if (form.name.length < 5) {
+    alert('Имя пользователя должно быть хотя бы 4 символа')
+    return
+  }
+
+  if (form.password.length < 8) {
+    alert('Пароль должен быть хотя бы 8 символов')
+    return
+  }
+
+  try {
+    const res = await axios.post('/api/me', {
+      username: name.value,
+      password: pass.value,
+    })
+    localStorage.setItem('token', res.data.token)
+    await router.push('/')
+  } catch (error) {
+    if (error instanceof AxiosError) {
+      if (error.response?.status === 401) {
+        alert('Ошибка авторизации')
+      } else if (error.response?.status === 409) {
+        alert('Пользователь уже существует')
+      }
+    }
+    form.name = ''
+    form.key = ''
+    form.password = ''
+  }
 }
 </script>
