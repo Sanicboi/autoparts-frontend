@@ -8,7 +8,7 @@
       </div>
       <div class="bottom">
         <button type="submit">Войти</button>
-        <RouterLink to="/login">Нету аккаунта? Создать аккаунт</RouterLink>
+        <RouterLink to="/signup">Нету аккаунта? Создать аккаунт</RouterLink>
       </div>
     </form>
   </main>
@@ -42,6 +42,7 @@ const onSubmit = async () => {
     localStorage.setItem('token', res.data.token)
     await router.push('/')
   } catch (error) {
+    console.log(error)
     if (error instanceof AxiosError) {
       if (error.response?.status === 401) {
         alert('Ошибка авторизации')

@@ -19,13 +19,18 @@ let results: Ref<
 > = ref([])
 let isEmpty = computed(() => results.value.length === 0)
 let isFinished: Ref<boolean> = ref(false)
+let isStarted: Ref<boolean> = ref(false)
 
 onMounted(async () => {
   if (!localStorage.getItem('token')) {
     await router.push('/login')
   }
 
-  socket = io()
+  socket = io({
+    auth: {
+      token: localStorage.getItem('token'),
+    },
+  })
   socket.on('result', (el: { vin: string; exist: number; autodoc: number }) => {
     results.value.push(el)
   })
@@ -43,6 +48,14 @@ const add = () => {
 
 const start = () => {
   socket.emit('parse', vins.value)
+  isStarted.value = true
+}
+
+const reset = () => {
+  isStarted.value = false
+  isFinished.value = false
+  vins.value = []
+  nextVin.value = ''
 }
 
 const exportExcel = async () => {
@@ -86,10 +99,11 @@ const exportExcel = async () => {
     <div class="parser-container">
       <h1>Парсинг артикулов</h1>
       <h3 v-for="vin in vins">{{ vin }}</h3>
-      <input type="text" v-model="nextVin" placeholder="Добавить вин" />
+      <input type="text" v-model="nextVin" id="addvin" placeholder="Добавить вин" />
       <button @click="add">Добавить</button>
     </div>
-    <button @click="start">Начапть парсинг</button>
+    <button @click="start">Начать парсинг</button>
+    <h3 v-if="!isFinished && isStarted">Идет парсинг...</h3>
     <div class="results" v-if="!isEmpty">
       <h3>Результаты</h3>
       <ol>
@@ -99,8 +113,8 @@ const exportExcel = async () => {
           <h4>Цена на автодок: {{ el.autodoc }}</h4>
         </li>
       </ol>
-      <h3 v-if="!isFinished">Идет парсинг...</h3>
-      <button v-else @click="exportExcel">Экспортировать в эксель</button>
+      <button v-if="isFinished" @click="reset">Сбросить</button>
+      <button v-if="isFinished" @click="exportExcel">Экспортировать в эксель</button>
     </div>
   </main>
 </template>
@@ -113,6 +127,14 @@ main {
   box-sizing: border-box;
   font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
   color: #111827;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1rem;
+}
+
+#addvin {
+  margin-right: 1rem;
 }
 
 .parser-container {

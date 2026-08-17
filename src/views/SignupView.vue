@@ -1,18 +1,18 @@
 <template>
   <main>
     <form @submit.prevent="onSubmit">
-      <h2>Registration</h2>
+      <h2>Регистрация</h2>
       <div>
         <!-- <label for="username">name</label> -->
-        <input type="text" id="username" v-model="form.name" placeholder="name" />
+        <input type="text" id="username" v-model="form.name" placeholder="Имя пользователя" />
       </div>
       <div>
         <!-- <label for="password">password</label> -->
-        <input type="password" id="password" v-model="form.password" placeholder="password" />
+        <input type="password" id="password" v-model="form.password" placeholder="Пароль" />
       </div>
       <div>
         <!-- <lable for="key">key</lable> -->
-        <input type="text" if="key" v-model="form.key" placeholder="key" />
+        <input type="text" if="key" v-model="form.key" placeholder="Ключ продукта" />
       </div>
       <button type="submit">Зарегистрироваться</button>
       <RouterLink to="/login">Уже есть аккаунт? Войти</RouterLink>
@@ -27,7 +27,6 @@ main {
   align-items: center;
   min-height: 100vh;
   background-color: #f3f4f6;
-  margin: -8px;
 }
 
 main > div {
@@ -104,13 +103,17 @@ button:active {
 }
 </style>
 
-<script setup>
+<script setup lang="ts">
+import axios, { AxiosError } from 'axios'
 import { reactive } from 'vue'
+import { useRouter } from 'vue-router'
 const form = reactive({
   name: '',
   password: '',
   key: '',
 })
+
+const router = useRouter()
 const onSubmit = async () => {
   if (form.name.length < 5) {
     alert('Имя пользователя должно быть хотя бы 4 символа')
@@ -123,9 +126,10 @@ const onSubmit = async () => {
   }
 
   try {
-    const res = await axios.post('/api/me', {
-      username: name.value,
-      password: pass.value,
+    const res = await axios.post('/api/user', {
+      username: form.name,
+      password: form.password,
+      signupKey: form.key,
     })
     localStorage.setItem('token', res.data.token)
     await router.push('/')
