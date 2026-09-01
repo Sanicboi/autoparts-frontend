@@ -3,6 +3,7 @@ import { io, Socket } from 'socket.io-client'
 import { computed, onMounted, ref, type Ref } from 'vue'
 import { useRouter } from 'vue-router'
 import ExcelJS from 'exceljs'
+import axios from 'axios'
 
 const router = useRouter()
 
@@ -24,6 +25,17 @@ let isStarted: Ref<boolean> = ref(false)
 onMounted(async () => {
   if (!localStorage.getItem('token')) {
     await router.push('/login')
+  }
+
+  try {
+    const r = await axios.get('/api/me', {
+      headers: {
+        Authorization: `Bearer ${localStorage.getItem('token')}`
+      }
+    });
+  } catch (error) {
+    localStorage.clear();
+    await router.push('/signup')
   }
 
   socket = io({
