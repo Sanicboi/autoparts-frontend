@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { io, Socket } from 'socket.io-client'
-import { computed, onMounted, ref, type Ref } from 'vue'
+import { computed, onMounted, reactive, ref, type Reactive, type Ref } from 'vue'
 import { useRouter } from 'vue-router'
 import ExcelJS from 'exceljs'
 import axios from 'axios'
@@ -21,6 +21,7 @@ let results: Ref<
 let isEmpty = computed(() => results.value.length === 0)
 let isFinished: Ref<boolean> = ref(false)
 let isStarted: Ref<boolean> = ref(false)
+let file: File | null = null;
 
 onMounted(async () => {
   if (!localStorage.getItem('token')) {
@@ -70,6 +71,19 @@ const reset = () => {
   nextVin.value = ''
 }
 
+const importExcel = async () => {
+  const workbook = new ExcelJS.Workbook();
+  await workbook.xlsx.load(await file!.arrayBuffer());
+  const sheet = workbook.getWorksheet(1);
+  const values: string[] = [];
+  for (let rowNumber = 1; ; rowNumber++) {
+    const value = sheet?.getCell(`A${rowNumber}`).value;
+    if (!value) break;
+    values.push(value as string);
+  };
+  vins.value.push(...values);
+}
+
 const exportExcel = async () => {
   const workbook = new ExcelJS.Workbook()
 
@@ -104,6 +118,10 @@ const exportExcel = async () => {
 
   URL.revokeObjectURL(url)
 }
+
+const addFile = (e: Event) => {
+  file = (e.target! as HTMLInputElement).files![0]!;
+}
 </script>
 
 <template>
@@ -111,8 +129,11 @@ const exportExcel = async () => {
     <div class="parser-container">
       <h1>Парсинг артикулов</h1>
       <h3 v-for="vin in vins">{{ vin }}</h3>
-      <input type="text" v-model="nextVin" id="addvin" placeholder="Добавить вин" />
+      <input type="text" v-model="nextVin" id="addvin" placeholder="Добавить артикул" />
       <button @click="add">Добавить</button>
+      <h3>Или импортируйте из экселя (Столбец артикулов должен начинаться в A1)</h3>
+      <input type="file" accept="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" @change="addFile">
+      <button @click="importExcel">Импортировать</button>
     </div>
     <button @click="start">Начать парсинг</button>
     <h3 v-if="!isFinished && isStarted">Идет парсинг...</h3>
@@ -120,7 +141,7 @@ const exportExcel = async () => {
       <h3>Результаты</h3>
       <ol>
         <li v-for="el in results">
-          <h4>VIN: {{ el.vin }}</h4>
+          <h4>Артикул: {{ el.vin }}</h4>
           <h4>Цена на экзист: {{ el.exist }}</h4>
           <h4>Цена на автодок: {{ el.autodoc }}</h4>
         </li>
