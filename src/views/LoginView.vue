@@ -1,19 +1,34 @@
 <template>
-  <main>
-    <form @submit.prevent="onSubmit">
-      <div class="bottom">
-        <h1>Вход</h1>
-        <input name="username" placeholder="Имя пользователя" v-model="name" type="text" />
-        <input type="password" placeholder="Пароль" v-model="pass" />
-      </div>
-      <div class="bottom">
-        <button type="submit">Войти</button>
-        <RouterLink to="/signup">Нету аккаунта? Создать аккаунт</RouterLink>
-      </div>
-    </form>
+  <main class="main">
+    <div class="center">
+      <form class="form" @submit.prevent="onSubmit">
+        <div class="padded">
+          <Logo>Вход</Logo>
+          <div class="fields">
+            <label class="label">Имя пользователя</label>
+            <input name="username" class="input" placeholder="ivan_autolytica" v-model="name" type="text" />
+            <div class="password">
+              <label class="label">Пароль</label>
+              <RouterLink to="/recover" class="link">Забыли пароль?</RouterLink>
+            </div>
+            <input type="password" class="input" placeholder="Пароль" v-model="pass" />
+          </div>
+          <button type="submit" class="btn scale">Войти</button>
+        </div>
+        <div class="cover">
+          <p class="no-account">Нет аккаунта?</p>
+          <RouterLink class="link scale" to="/signup">Создать аккаунт</RouterLink>
+        </div>
+      </form>
+      <Suppliers />
+    </div>
+    <Footer />
   </main>
 </template>
 <script lang="ts" setup>
+import Footer from '@/components/footer.vue'
+import Logo from '@/components/logo.vue'
+import Suppliers from '@/components/suppliers.vue'
 import axios, { AxiosError } from 'axios'
 import { ref, type Ref } from 'vue'
 import { useRouter } from 'vue-router'
@@ -56,70 +71,30 @@ const onSubmit = async () => {
 }
 </script>
 <style scoped>
-main {
-  background-color: #f3f4f6;
-  display: flex;
-  min-height: 100vh;
-  width: 100%;
-  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+input {
+  margin-top: 0.3rem;
 }
 
-form {
-  margin: auto;
-  background-color: white;
-  border-radius: 1rem;
-  padding: 0.5rem 2rem;
+.password {
+  margin-top: 1rem;
   display: flex;
-  flex-direction: column;
-  align-items: stretch;
+  flex-direction: row;
   justify-content: space-between;
-  min-width: 25%;
+  align-items: baseline;
+  cursor: pointer;
 }
 
-h1 {
-  margin: 0;
-}
-
-label {
-  margin-top: 0.5rem;
-}
 
 button {
-  margin-top: 3rem;
-  font-size: 1rem;
-  font-weight: 600;
-  padding: 0.75rem 1rem;
-  outline: none;
-  border: none;
-  border-radius: 10px;
-  background-color: #3b82f6;
-  cursor: pointer;
-  color: white;
-  transition: all 0.2s;
+  margin-top: 1.5rem;
 }
 
-button:hover {
-  transform: scale(1.03);
-}
 
-a {
-  font-size: 14px;
-  margin-top: 0.5rem;
-}
 
-.bottom {
-  display: flex;
-  flex-direction: column;
-  align-items: stretch;
-  justify-content: start;
-}
 
-input {
-  outline: none;
-  padding: 0.75rem 1rem;
-  border: 1px solid #d1d5db;
-  background-color: #f9fafb;
-  border-radius: 10px;
-  margin-top: 1rem;
+.no-account {
+  font-size: 12px;
+  line-height: 1.2;
+  color: #64748B;
 }
 </style>

@@ -2,26 +2,41 @@
 import { io, Socket } from 'socket.io-client'
 import { computed, onMounted, reactive, ref, type Reactive, type Ref } from 'vue'
 import { useRouter } from 'vue-router'
-import ExcelJS from 'exceljs'
 import axios from 'axios'
-
+import Navbar from '@/components/navbar.vue'
+import { exportNumbers, importNumbers } from '@/utils/excel'
 const router = useRouter()
 
-let socket: Socket
+let socket: Socket;
 
-let vins: Ref<string[]> = ref([])
-let nextVin: Ref<string> = ref('')
+
+let mode: Ref<'list' | 'excel'> = ref('list');
+
+const toggleMode = () => {
+  mode.value = mode.value == 'excel' ? 'list' : 'excel';
+}
+
+let numbers: Ref<string[]> = ref([]);
+let nextNumber: Ref<string> = ref('');
+
+const addNumber = () => {
+  if (!nextNumber.value) return;
+  numbers.value.push(nextNumber.value);
+  nextNumber.value = '';
+}
+
+let isLoading: Ref<boolean> = ref(false);
 let results: Ref<
   {
-    vin: string
-    exist: number
-    autodoc: number
+    part: string, exist: number, adeo: number, autodoc: number
   }[]
 > = ref([])
-let isEmpty = computed(() => results.value.length === 0)
-let isFinished: Ref<boolean> = ref(false)
-let isStarted: Ref<boolean> = ref(false)
+
 let file: File | null = null;
+const addFile = async (e: Event) => {
+  file = (e.target! as HTMLInputElement).files![0]!;
+  const res = await importNumbers(file);
+}
 
 onMounted(async () => {
   if (!localStorage.getItem('token')) {
@@ -44,262 +59,171 @@ onMounted(async () => {
       token: localStorage.getItem('token'),
     },
   })
-  socket.on('result', (el: { vin: string; exist: number; autodoc: number }) => {
+  socket.on('progress', (el: { part: string, exist: number, adeo: number, autodoc: number }) => {
     results.value.push(el)
+  });
+  socket.on('finish', () => {
+    isLoading.value = false;
   })
 
-  socket.on('end-parse', () => {
-    isFinished.value = true
-    alert('Парсинг завершен')
-  })
 })
 
-const add = () => {
-  vins.value.push(nextVin.value)
-  nextVin.value = ''
+
+const start = async () => {
+  if (numbers.value.length == 0) return alert("Необходимо ввести артикулы");
+  isLoading.value = true;
+  socket.emit("parse", numbers.value)
 }
 
-const start = () => {
-  socket.emit('parse', vins.value)
-  isStarted.value = true
+const download = async () => {
+  await exportNumbers(results.value);
 }
 
-const reset = () => {
-  isStarted.value = false
-  isFinished.value = false
-  vins.value = []
-  nextVin.value = ''
-}
-
-const importExcel = async () => {
-  const workbook = new ExcelJS.Workbook();
-  await workbook.xlsx.load(await file!.arrayBuffer());
-  const sheet = workbook.getWorksheet(1);
-  const values: string[] = [];
-  for (let rowNumber = 1; ; rowNumber++) {
-    const value = sheet?.getCell(`A${rowNumber}`).value;
-    if (!value) break;
-    values.push(value as string);
-  };
-  vins.value.push(...values);
-}
-
-const exportExcel = async () => {
-  const workbook = new ExcelJS.Workbook()
-
-  const sheet = workbook.addWorksheet('Main')
-  const vinCell = sheet.getCell('A1')
-  vinCell.value = 'VIN'
-  const existCell = sheet.getCell('B1')
-  existCell.value = 'Exist цена'
-  const autodocCell = sheet.getCell('C1')
-  autodocCell.value = 'Autodoc цена'
-  for (let i = 0; i < results.value.length; i++) {
-    const v = sheet.getCell(`A${i + 2}`)
-    const e = sheet.getCell(`B${i + 2}`)
-    const a = sheet.getCell(`C${i + 2}`)
-    v.value = results.value[i]!.vin
-    e.value = results.value[i]!.exist
-    a.value = results.value[i]!.autodoc
-  }
-
-  const buffer = await workbook.xlsx.writeBuffer()
-
-  const blob = new Blob([buffer], {
-    type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-  })
-
-  const url = URL.createObjectURL(blob)
-
-  const link = document.createElement('a')
-  link.href = url
-  link.download = 'result.xlsx'
-  link.click()
-
-  URL.revokeObjectURL(url)
-}
-
-const addFile = (e: Event) => {
-  file = (e.target! as HTMLInputElement).files![0]!;
-}
 </script>
 
 <template>
   <main>
-    <div class="parser-container">
-      <h1>Парсинг артикулов</h1>
-      <h3 v-for="vin in vins">{{ vin }}</h3>
-      <input type="text" v-model="nextVin" id="addvin" placeholder="Добавить артикул" />
-      <button @click="add">Добавить</button>
-      <h3>Или импортируйте из экселя (Столбец артикулов должен начинаться в A1)</h3>
-      <input type="file" accept="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" @change="addFile">
-      <button @click="importExcel">Импортировать</button>
+    <Navbar />
+    <div class="content">
+      <header>
+        <img src="/parsing.svg" alt="">
+        <h1>Проценка артикулов</h1>
+      </header>
+      <div class="selection-container">
+        <button @click="toggleMode" :class="mode == 'list' ? 'mode-selected' : ''" class="selection-option">Одиночные
+          артикулы (ввод
+          списком)</button>
+        <button @click="toggleMode" :class="mode != 'list' ? 'mode-selected' : ''" class="selection-option">Загрузка
+          Excel-файла</button>
+      </div>
+      <div v-if="!isLoading && results.length == 0" class="parser-container">
+        <div class="list" v-if="mode == 'list'">
+          <label>Список артикулов</label>
+          <ul>
+            <li v-for="n in numbers">{{ n }}</li>
+          </ul>
+          <input type="text" class="new-number input" v-model="nextNumber" placeholder="Новый артикул">
+          <button class="add-number btn scale" @click="addNumber">Добавить артикул</button>
+        </div>
+        <div class="list" v-else>
+          <label>Файл с артикулами (столбец А, с ячейки А1)</label>
+          <input type="file" class="input" accept=".xlsx" @change="addFile">
+        </div>
+        <button @click="start" class="start btn scale">Начать проценку</button>
+      </div>
     </div>
-    <button @click="start">Начать парсинг</button>
-    <h3 v-if="!isFinished && isStarted">Идет парсинг...</h3>
-    <div class="results" v-if="!isEmpty">
-      <h3>Результаты</h3>
-      <ol>
-        <li v-for="el in results">
-          <h4>Артикул: {{ el.vin }}</h4>
-          <h4>Цена на экзист: {{ el.exist }}</h4>
-          <h4>Цена на автодок: {{ el.autodoc }}</h4>
-        </li>
-      </ol>
-      <button v-if="isFinished" @click="reset">Сбросить</button>
-      <button v-if="isFinished" @click="exportExcel">Экспортировать в эксель</button>
+    <div v-if="isLoading">
+      <h2>Идет проценка...</h2>
+    </div>
+    <div class="" v-else-if="!isLoading && results.length > 0">
+      <h2>Проценка завершена!</h2>
+      <button class="btn">Скачать результат</button>
     </div>
   </main>
 </template>
 <style scoped>
 main {
-  background-color: #f3f4f6;
+  background-color: #F8FAFC;
   min-height: 100vh;
-  width: 100%;
-  padding: 3rem 2rem;
-  box-sizing: border-box;
-  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-  color: #111827;
   display: flex;
   flex-direction: column;
+  justify-content: start;
+  align-items: stretch;
+}
+
+header {
+  margin-top: 1.5rem;
+  padding: 1rem;
+  display: flex;
+  flex-direction: row;
   align-items: center;
+  justify-content: start;
+  background: white;
+  border-radius: 0.5rem;
   gap: 1rem;
 }
 
-#addvin {
-  margin-right: 1rem;
+h1 {
+  line-height: 1.4;
+  font-size: 20px;
+  font-weight: 600;
+}
+
+.res-col {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+}
+
+.selection-container {
+  margin-top: 2rem;
+  background: #E8E7F1;
+  align-self: flex-start;
+  padding: 0.125rem;
+  border-radius: 8px;
+  display: flex;
+  flex-direction: row;
+  align-items: baseline;
+  justify-content: start;
+  gap: 0.125rem;
+}
+
+.selection-option {
+  outline: none;
+  border: none;
+  background: none;
+  padding: 0.5rem 1rem;
+  line-height: auto;
+  cursor: pointer;
+  border-radius: 4px;
+  color: #1A1B22;
+  font-weight: 500;
+  font-size: 14px;
+  transition: all 0.3s;
+}
+
+.mode-selected {
+  background: white;
 }
 
 .parser-container {
-  max-width: 900px;
-  margin: 0 auto;
-  background-color: white;
-  border-radius: 1rem;
-  padding: 2rem;
-  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.06);
-}
-
-h1 {
-  margin: 0 0 2rem;
-  font-size: 2rem;
-}
-
-h3 {
-  margin: 0.75rem 0;
-}
-
-.vin-list {
+  padding: 1.5rem;
+  background: white;
   display: flex;
   flex-direction: column;
-  gap: 0.5rem;
-  margin-bottom: 1.5rem;
+  justify-content: start;
+  align-items: stretch;
 }
 
-.vin-item {
-  padding: 0.75rem 1rem;
-  background-color: #f9fafb;
-  border: 1px solid #e5e7eb;
-  border-radius: 10px;
-  font-size: 0.95rem;
-}
-
-.add-vin {
+.list {
   display: flex;
-  gap: 0.75rem;
-  margin-bottom: 1.5rem;
+  flex-direction: column;
+  justify-content: start;
+  align-items: start;
+  gap: 0.5rem
 }
 
-input {
-  flex: 1;
-  outline: none;
-  padding: 0.75rem 1rem;
-  border: 1px solid #d1d5db;
-  background-color: #f9fafb;
-  border-radius: 10px;
-  font-size: 1rem;
-  transition:
-    border-color 0.2s,
-    box-shadow 0.2s;
-}
-
-input:focus {
-  border-color: #3b82f6;
-  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.15);
-}
-
-button {
-  font-size: 1rem;
-  font-weight: 600;
-  padding: 0.75rem 1.25rem;
-  outline: none;
-  border: none;
-  border-radius: 10px;
-  background-color: #3b82f6;
-  cursor: pointer;
-  color: white;
-  transition: all 0.2s;
-}
-
-button:hover {
-  transform: translateY(-1px);
-  background-color: #2563eb;
-}
-
-.button-secondary {
-  background-color: #e5e7eb;
-  color: #111827;
-}
-
-.button-secondary:hover {
-  background-color: #d1d5db;
-}
-
-.actions {
+.content {
   display: flex;
-  gap: 0.75rem;
-  margin-bottom: 2rem;
+  flex-direction: column;
+  align-items: stretch;
+  justify-content: start;
+  margin-left: 2.5rem;
+  margin-right: 2.5rem;
 }
 
-.results {
-  margin-top: 2rem;
-}
-
-.results-list {
-  padding-left: 1.5rem;
-}
-
-.result-card {
-  margin-bottom: 1rem;
-  padding: 1rem 1.25rem;
-  background-color: #f9fafb;
-  border: 1px solid #e5e7eb;
-  border-radius: 12px;
-}
-
-.result-card h4 {
-  margin: 0.4rem 0;
-  font-size: 0.95rem;
+label {
+  line-height: 1.4;
   font-weight: 500;
+  font-size: 14px;
 }
 
-.parsing {
-  display: flex;
-  align-items: center;
-  gap: 0.75rem;
-  margin-top: 1.5rem;
-  padding: 1rem;
-  background-color: #eff6ff;
-  border-radius: 10px;
-  color: #1d4ed8;
-  font-weight: 600;
+.add-number {
+  font-size: 14px;
 }
 
-.export {
-  margin-top: 1.5rem;
-  background-color: #10b981;
-}
-
-.export:hover {
-  background-color: #059669;
+.start {
+  align-self: flex-end;
+  margin-top: 2rem;
 }
 </style>
